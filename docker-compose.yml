@@ -1,0 +1,14 @@
+version: '4.21.1'
+services:
+  dev-proj:
+    image: postgres:13
+    ports:
+      - 5437:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123
+      POSTGRES_DB: proj
+    networks:
+      - freecodecamp
+networks:
+  freecodecamp:
