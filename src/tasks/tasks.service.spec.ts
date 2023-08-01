@@ -1,47 +1,71 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
+import { TasksService } from './tasks.service';
 import { Task, Prisma } from '@prisma/client';
-
-
-
-class TasksService {
-  constructor(private prisma: PrismaService) {}
-
-  async create(data: Prisma.TaskCreateInput): Promise<Task> {
-    return this.prisma.task.create({
-      data,
-    });
-  }
-
-  async findOne(taskId: number): Promise<Task | null> {
-    return this.prisma.task.findUnique({
-      where: {
-        id: taskId,
-      },
-    });
-  }
-
-  async deleteOne(taskId: number): Promise<Task> {
-    return this.prisma.task.delete({
-      where: {
-        id: taskId,
-      },
-    });
-  }
-}
 
 describe('TasksService', () => {
   let service: TasksService;
+  let prisma: PrismaService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [TasksService],
+      providers: [
+        TasksService,
+        {
+          provide: PrismaService,
+          useValue: {
+            task: {
+              create: jest.fn().mockResolvedValue({
+                id: 1,
+                title: 'Test task',
+                description: 'Test description',
+              }),
+              findUnique: jest.fn().mockResolvedValue({
+                id: 1,
+                title: 'Test task',
+                description: 'Test description',
+              }),
+              delete: jest.fn().mockResolvedValue({}),
+            },
+          },
+        },
+      ],
     }).compile();
 
     service = module.get<TasksService>(TasksService);
+    prisma = module.get<PrismaService>(PrismaService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  it('should create a task', async () => {
+    const task: Prisma.TaskCreateInput = {
+      title: 'Test task',
+      description: 'Test description',
+    };
+
+    expect(await service.create(task)).toEqual({
+      id: 1,
+      title: 'Test task',
+      description: 'Test description',
+    });
+
+    expect(prisma.task.create).toHaveBeenCalledWith({ data: task });
+  });
+
+  it('should get a task', async () => {
+    const id = 1;
+    expect(await service.findOne(id)).toEqual({
+      id: 1,
+      title: 'Test task',
+      description: 'Test description',
+    });
+
+    expect(prisma.task.findUnique).toHaveBeenCalledWith({ where: { id } });
+  });
+
+  it('should delete a task', async () => {
+    const id = 1;
+    expect(await service.deleteOne(id)).toEqual({});
+
+    expect(prisma.task.delete).toHaveBeenCalledWith({ where: { id } });
   });
 });

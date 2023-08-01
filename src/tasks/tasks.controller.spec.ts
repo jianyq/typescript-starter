@@ -1,66 +1,69 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { TasksController } from './tasks.controller';
+import { TasksService } from './tasks.service';
 import { Task as TaskModel, Prisma } from '@prisma/client';
-import { Controller, Get, Post, Delete, Body, Param } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-class TasksService {
-  constructor(private prisma: PrismaService) {}
-
-  async create(data: Prisma.TaskCreateInput): Promise<TaskModel> {
-    return this.prisma.task.create({
-      data,
-    });
-  }
-
-  async findOne(taskId: number): Promise<TaskModel | null> {
-    return this.prisma.task.findUnique({
-      where: {
-        id: taskId,
-      },
-    });
-  }
-
-  async deleteOne(taskId: number): Promise<TaskModel> {
-    return this.prisma.task.delete({
-      where: {
-        id: taskId,
-      },
-    });
-  }
-}
-
-class TasksController {
-  constructor(private readonly tasksService: TasksService) {}
-
-  @Post()
-  async createTask(
-    @Body() taskData: Prisma.TaskCreateInput,
-  ): Promise<TaskModel> {
-    return this.tasksService.create(taskData);
-  }
-
-  @Get(':id')
-  async getTask(@Param('id') id: string): Promise<TaskModel> {
-    return this.tasksService.findOne(+id);
-  }
-
-  @Delete(':id')
-  async deleteTask(@Param('id') id: string): Promise<TaskModel> {
-    return this.tasksService.deleteOne(+id);
-  }
-}
 
 describe('TasksController', () => {
-  let controller: TasksController;
+  let tasksController: TasksController;
+  let tasksService: TasksService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [TasksController],
+      providers: [
+        {
+          provide: TasksService,
+          useValue: {
+            create: jest.fn().mockResolvedValue({
+              id: 1,
+              title: 'Test task',
+              description: 'Test description',
+            }),
+            findOne: jest.fn().mockResolvedValue({
+              id: 1,
+              title: 'Test task',
+              description: 'Test description',
+            }),
+            deleteOne: jest.fn().mockResolvedValue({}),
+          },
+        },
+      ],
     }).compile();
 
-    controller = module.get<TasksController>(TasksController);
+    tasksController = module.get<TasksController>(TasksController);
+    tasksService = module.get<TasksService>(TasksService);
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
+  it('should create a task', async () => {
+    const task: Prisma.TaskCreateInput = {
+      title: 'Test task',
+      description: 'Test description',
+    };
+
+    expect(await tasksController.createTask(task)).toEqual({
+      id: 1,
+      title: 'Test task',
+      description: 'Test description',
+    });
+
+    expect(tasksService.create).toHaveBeenCalledWith(task);
+  });
+
+  it('should get a task', async () => {
+    const id = '1';
+    expect(await tasksController.getTask(id)).toEqual({
+      id: 1,
+      title: 'Test task',
+      description: 'Test description',
+    });
+
+    expect(tasksService.findOne).toHaveBeenCalledWith(+id);
+  });
+
+  it('should delete a task', async () => {
+    const id = '1';
+    expect(await tasksController.deleteTask(id)).toEqual({});
+
+    expect(tasksService.deleteOne).toHaveBeenCalledWith(+id);
   });
 });

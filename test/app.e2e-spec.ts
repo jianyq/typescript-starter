@@ -1,63 +1,58 @@
-import * as request from 'supertest';
 import { Test, TestingModule } from '@nestjs/testing';
+import { INestApplication } from '@nestjs/common';
+import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { TasksService } from '../src/tasks/tasks.service';
-import { TaskStatus } from '../src/tasks/task-status.enum';
 
 describe('TasksController (e2e)', () => {
   let app: INestApplication;
 
-  const testTask = {
-    title: 'Test task',
-    description: 'Test task description',
-    status: TaskStatus.TODO,
-  };
-
-  let taskId: string;
-
-  beforeAll(async () => {
+  beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe());
     await app.init();
   });
 
-  it('/tasks (POST)', () => {
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it('POST /tasks', () => {
     return request(app.getHttpServer())
       .post('/tasks')
-      .send(testTask)
+      .send({
+        title: 'Test task',
+        description: 'Test description',
+      })
       .expect(201)
-      .then(({ body }) => {
-        taskId = body.id;
-        expect(body.title).toEqual(testTask.title);
-        expect(body.description).toEqual(testTask.description);
-        expect(body.status).toEqual(testTask.status);
+      .expect({
+        id: 1,
+        title: 'Test task',
+        description: 'Test description',
       });
   });
 
-  it('/tasks/:id (GET)', () => {
+  it('GET /tasks/:id', () => {
     return request(app.getHttpServer())
-      .get(`/tasks/${taskId}`)
+      .get('/tasks/1')
       .expect(200)
-      .then(({ body }) => {
-        expect(body.id).toEqual(taskId);
-        expect(body.title).toEqual(testTask.title);
-        expect(body.description).toEqual(testTask.description);
-        expect(body.status).toEqual(testTask.status);
+      .expect({
+        id: 1,
+        title: 'Test task',
+        description: 'Test description',
       });
   });
 
-  it('/tasks/:id (DELETE)', () => {
+  it('DELETE /tasks/:id', () => {
     return request(app.getHttpServer())
-      .delete(`/tasks/${taskId}`)
-      .expect(200);
-  });
-
-  afterAll(async () => {
-    await app.close();
+      .delete('/tasks/1')
+      .expect(200)
+      .expect({
+        id: 1,
+        title: 'Test task',
+        description: 'Test description',
+      });
   });
 });
